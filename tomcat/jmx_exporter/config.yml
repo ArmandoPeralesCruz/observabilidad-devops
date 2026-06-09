@@ -1,0 +1,36 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  - pattern: "Catalina<type=GlobalRequestProcessor, name=(.+)><>(.+):"
+    name: tomcat_$2
+    labels:
+      port: "$1"
+
+  - pattern: "Catalina<j2eeType=Servlet, WebModule=(.+), name=(.+), J2EEApplication=(.+), J2EEServer=(.+)><>(.+):"
+    name: tomcat_servlet_$5
+    labels:
+      module: "$1"
+      servlet: "$2"
+
+  - pattern: "Catalina<type=ThreadPool, name=(.+)><>(.+):"
+    name: tomcat_threadpool_$2
+    labels:
+      port: "$1"
+
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>(.+):"
+    name: jvm_heap_$1
+
+  - pattern: "java.lang<type=Memory><NonHeapMemoryUsage>(.+):"
+    name: jvm_nonheap_$1
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>(.+):"
+    name: jvm_gc_$2
+    labels:
+      gc: "$1"
+
+  - pattern: "java.lang<type=Threading><>(.+):"
+    name: jvm_threading_$1
+
+  - pattern: "java.lang<type=OperatingSystem><>(.+):"
+    name: jvm_os_$1

@@ -1,0 +1,18 @@
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'TU_CORREO@gmail.com'
+  smtp_auth_username: 'peralesarmando96@gmail.com'
+  smtp_auth_password: 'Los@de168'
+  smtp_require_tls: true
+
+route:
+  receiver: 'correo-devops'
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: 'correo-devops'
+    email_configs:
+      - to: 'peralesarmando96@gmail.com'
+        send_resolved: true

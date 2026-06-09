@@ -1,0 +1,172 @@
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules:/etc/prometheus/rules
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=peralesarmando96@gmail.com
+      - GF_SMTP_PASSWORD=yskqeqghkvpyghmt
+      - GF_SMTP_FROM_ADDRESS=peralesarmando96@gmail.com
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  blackbox_exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    ports:
+      - "9115:9115"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wppassword
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  mariadb_exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mariadb_exporter
+    volumes:
+      - ./mariadb/.my.cnf:/etc/.my.cnf:ro
+    command:
+      - '--config.my-cnf=/etc/.my.cnf'
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wppassword
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "8082:80"
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  tomcat:
+    image: tomcat:10.1-jdk17
+    container_name: tomcat
+    ports:
+      - "8080:8080"
+      - "9404:9404"
+    volumes:
+      - ./tomcat/jmx_exporter:/jmx_exporter
+    environment:
+      CATALINA_OPTS: "-javaagent:/jmx_exporter/jmx_prometheus_javaagent.jar=9404:/jmx_exporter/config.yml"
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+  django:
+    build: ./django
+    container_name: django-apache
+    ports:
+      - "8083:80"
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+    networks:
+      - observabilidad
+
+networks:
+  observabilidad:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  mariadb_data:
+  wordpress_data:
